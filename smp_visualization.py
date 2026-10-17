@@ -13,6 +13,23 @@ import smp_model as model
 from smp_evaluation import Analysis, de, iat_text, noise_label, num_text, step_text
 
 
+def _ref_line(fig, value, text, position, axis, log=True, **line_kwargs):
+    """Referenzlinie mit Beschriftung auf einer logarithmischen Achse: die Linie liegt auf dem Datenwert, die Beschriftung braucht log10 des Werts
+    (add_hline und add_vline setzen beide auf denselben Wert, die Beschriftung sitzt dann falsch und dehnt die Achse); log=False für lineare Achsen."""
+    if log and not value > 0.0:
+        return
+    pos = math.log10(value) if log else value
+    top, left = "top" in position, "left" in position
+    if axis == "y":
+        fig.add_hline(y=value, **line_kwargs)
+        if text:
+            fig.add_annotation(xref="paper", yref="y", x=0 if left else 1, y=pos, text=text, showarrow=False, xanchor="left" if left else "right", yanchor="bottom" if top else "top")
+    else:
+        fig.add_vline(x=value, **line_kwargs)
+        if text:
+            fig.add_annotation(xref="x", yref="paper", x=pos, y=1 if top else 0, text=text, showarrow=False, xanchor="right" if left else "left", yanchor="top" if top else "bottom")
+
+
 def _fixed(fig: go.Figure, height: int = 380, **layout) -> go.Figure:
     fig.update_layout(height=height, margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=-0.25), **layout)
     fig.update_xaxes(fixedrange=True)
@@ -110,7 +127,7 @@ def build_burnin_chart(res: dict) -> go.Figure:
         rows = res["rows"][key]
         fig.add_trace(go.Scatter(x=[r["discard"] for r in rows], y=[r["rhat_point"] for r in rows], mode="lines+markers", name=f"{label}: Punktwert", line=dict(color=color, width=3)))
         fig.add_trace(go.Scatter(x=[r["discard"] for r in rows], y=[r["rhat_mean"] for r in rows], mode="lines+markers", name=f"{label}: Mittelwert", line=dict(color=color, width=2, dash="dash")))
-    fig.add_hline(y=C.RHAT_OK, line=dict(color=C.COLOR_GREY, dash="dot"), annotation_text="R̂ = 1,1", annotation_position="bottom right")
+    _ref_line(fig, C.RHAT_OK, "R̂ = 1,1", "bottom right", "y", line=dict(color=C.COLOR_GREY, dash="dot"))
     fig.update_xaxes(title="Verworfene Schritte")
     fig.update_yaxes(title="R̂ (Gelman-Rubin)", type="log")
     return _fixed(fig, 340)
